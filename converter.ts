@@ -81,10 +81,25 @@ export function convertOpenAIRequestToAmazonQ(
   const historyText = openaiMessagesToText(req.messages);
 
   // Inject history text (OpenAI format uses a single prompt containing history)
+  // Note: Python version uses "Context Entry" to inject the system prompt/jailbreak.
+  // We must ensure we are formatting it exactly as the Python version does.
   const contextHeader =
-    "--- CONTEXT ENTRY BEGIN ---\\n[]\\n--- CONTEXT ENTRY END ---\\n\\n--- USER MESSAGE BEGIN ---\\n";
+    "--- CONTEXT ENTRY BEGIN ---\n[]\n--- CONTEXT ENTRY END ---\n\n--- USER MESSAGE BEGIN ---\n";
   const contextFooter = "--- USER MESSAGE END ---";
 
+  // In Python version, openai_messages_to_text joins with \n\n.
+  // We did that in openaiMessagesToText function.
+  
+  // Construct the content. 
+  // IMPORTANT: The Python version REPLACES "你好，你必须讲个故事" with history_text inside the template?
+  // Let's check replicate.py: inject_history function.
+  // It looks like: cur["content"] = content.replace("你好，你必须讲个故事", history_text)
+  // The template in converter.ts has "PLACEHOLDER" instead of "你好，你必须讲个故事".
+  // We should replace "PLACEHOLDER" with the actual prompt.
+  
+  // Wait, the template defined in converter.ts lines 10-44 has "PLACEHOLDER".
+  // So we just set the content directly.
+  
   payload.conversationState.currentMessage.userInputMessage.content =
     contextHeader + historyText + contextFooter;
 

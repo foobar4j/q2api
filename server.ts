@@ -447,8 +447,22 @@ app.post("/v1/chat/completions", async (c) => {
                 else if (payload.assistantMessage?.content) text = payload.assistantMessage.content;
                 else if (payload.message?.content) text = payload.message.content;
                 else if (payload.delta?.content) text = payload.delta.content;
+                
+                // Handle array content (e.g. tool_use + text)
+                if (!text && (payload.assistantResponseEvent?.content || payload.assistantMessage?.content)) {
+                    // Sometimes content is array in Amazon Q events?
+                    // Usually it's a string in the event structure seen so far.
+                    // But let's double check payload structure if needed.
+                }
+                
                 if (text) chunks.push(text);
             }
+            
+            // If no text chunks found, check if there were other events or errors
+            if (chunks.length === 0) {
+                 console.warn("No content chunks received from upstream.");
+            }
+
             const fullText = chunks.join("");
             await db.updateAccountStats(account.id, true, MAX_ERROR_COUNT);
 

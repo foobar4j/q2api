@@ -6,32 +6,54 @@ export class EventStreamParser {
     const decoder = new TextDecoder("utf-8");
 
     while (offset < headersData.byteLength) {
+      // Name Length (1 byte)
       if (offset >= headersData.byteLength) break;
       const nameLength = headersData[offset];
       offset += 1;
 
+      // Name
       if (offset + nameLength > headersData.byteLength) break;
       const name = decoder.decode(headersData.subarray(offset, offset + nameLength));
       offset += nameLength;
 
+      // Value Type (1 byte)
       if (offset >= headersData.byteLength) break;
       const valueType = headersData[offset];
       offset += 1;
 
-      if (offset + 2 > headersData.byteLength) break;
-      // Big-endian uint16
-      const valueLength = view.getUint16(offset, false); // false = big-endian
-      offset += 2;
-
-      if (offset + valueLength > headersData.byteLength) break;
-
-      if (valueType === 7) {
-        const value = decoder.decode(headersData.subarray(offset, offset + valueLength));
-        headers[name] = value;
+      // Value
+      if (valueType === 0) { // true
+          // headers[name] = "true";
+      } else if (valueType === 1) { // false
+          // headers[name] = "false";
+      } else if (valueType === 2) { // byte
+          offset += 1;
+      } else if (valueType === 3) { // int16
+          offset += 2;
+      } else if (valueType === 4) { // int32
+          offset += 4;
+      } else if (valueType === 5) { // int64
+          offset += 8;
+      } else if (valueType === 6) { // byte array
+          if (offset + 2 > headersData.byteLength) break;
+          const len = view.getUint16(offset, false);
+          offset += 2;
+          offset += len;
+      } else if (valueType === 7) { // string
+          if (offset + 2 > headersData.byteLength) break;
+          const len = view.getUint16(offset, false);
+          offset += 2;
+          if (offset + len > headersData.byteLength) break;
+          const val = decoder.decode(headersData.subarray(offset, offset + len));
+          headers[name] = val;
+          offset += len;
+      } else if (valueType === 8) { // timestamp
+          offset += 8;
+      } else if (valueType === 9) { // uuid
+          offset += 16;
+      } else {
+          break; // Unknown type
       }
-      // Ignore other types for now as we only need string headers (:event-type etc)
-
-      offset += valueLength;
     }
     return headers;
   }
